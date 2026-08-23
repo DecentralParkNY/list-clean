@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gleam — List & Clean</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes checkPop { 0% { transform: scale(0); } 60% { transform: scale(1.3); } 100% { transform: scale(1); } }
+  :root {
+    --bg: #f8f6f1;
+    --surface: #ffffff;
+    --ink: #1a1a1a;
+    --muted: #8a8478;
+    --accent: #3d8b6e;
+    --accent-light: #e8f5ee;
+    --danger: #c4554e;
+    --danger-light: #fce8e6;
+    --border: #e8e4dd;
+    --nav-bg: #fffefa;
+  }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: 72px;
+  }
+  .screen { display: none; animation: fadeIn .3s ease; padding: 24px 20px 32px; max-width: 420px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  /* Hero */
+  .brand { text-align: center; margin-bottom: 32px; padding-top: 48px; }
+  .brand h1 { font-size: 42px; font-weight: 300; letter-spacing: -1px; color: var(--accent); }
+  .brand h1 span { font-weight: 700; }
+  .brand .tagline { font-size: 13px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); margin-top: 4px; }
+  .pitch { text-align: center; font-size: 22px; font-weight: 600; line-height: 1.35; margin-bottom: 36px; color: var(--ink); }
+  .pitch em { font-style: normal; color: var(--accent); }
+
+  /* Task list */
+  .task-list { list-style: none; }
+  .task-item {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
+    cursor: pointer; transition: all .2s;
+  }
+  .task-item:hover { border-color: var(--accent); }
+  .task-item.done { opacity: .5; }
+  .task-item.done .task-text { text-decoration: line-through; color: var(--muted); }
+  .task-check {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s; font-size: 14px; color: transparent;
+  }
+  .task-item.done .task-check {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    animation: checkPop .3s ease;
+  }
+  .task-text { font-size: 16px; flex: 1; }
+  .task-tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .tag-tidy { background: var(--accent-light); color: var(--accent); }
+  .tag-toss { background: var(--danger-light); color: var(--danger); }
+  .tag-sort { background: #eee8f5; color: #6b4e9b; }
+
+  .clean-btn {
+    display: block; width: 100%; margin-top: 24px; padding: 18px;
+    background: var(--accent); color: #fff; border: none; border-radius: 14px;
+    font-size: 17px; font-weight: 700; cursor: pointer; letter-spacing: .5px;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .clean-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .clean-btn.swept {
+    background: linear-gradient(90deg, var(--accent), #5bb892, var(--accent));
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease infinite;
+  }
+  .clean-btn.swept::after { content: '✓  Swept clean'; }
+
+  .stats { display: flex; justify-content: center; gap: 32px; margin-top: 20px; text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Flow map */
+  .flow-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; padding-top: 32px; }
+  .flow-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+  .flow-grid { display: flex; flex-direction: column; gap: 12px; }
+  .flow-box {
+    display: block; text-decoration: none; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; transition: all .2s;
+  }
+  .flow-box:hover { border-color: var(--accent); transform: translateX(4px); }
+  .flow-box strong { display: block; font-size: 16px; margin-bottom: 4px; }
+  .flow-box span { font-size: 13px; color: var(--muted); }
+  .flow-box .arrow { float: right; color: var(--muted); font-size: 18px; }
+
+  /* Placeholder screens */
+  .placeholder { text-align: center; padding-top: 120px; }
+  .placeholder h2 { font-size: 26px; font-weight: 700; margin-bottom: 12px; }
+  .placeholder p { font-size: 15px; color: var(--muted); max-width: 280px; margin: 0 auto; line-height: 1.5; }
+  .placeholder .icon { font-size: 48px; margin-bottom: 16px; display: block; }
+
+  /* Nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--nav-bg); border-top: 1px solid var(--border);
+    display: flex; justify-content: center; gap: 0;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .bottom-nav button {
+    flex: 1; max-width: 90px; background: none; border: none;
+    padding: 8px 4px; cursor: pointer; display: flex;
+    flex-direction: column; align-items: center; gap: 3px;
+    color: var(--muted); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px; transition: color .2s;
+  }
+  .bottom-nav button .nav-icon { font-size: 20px; }
+  .bottom-nav button.active { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="screen" id="screen-hero">
+  <div class="brand">
+    <h1>gle<span>am</span></h1>
+    <div class="tagline">list it · clean it · done</div>
+  </div>
+  <p class="pitch">Every mess is just a list that hasn't been <em>checked off</em> yet.</p>
+  <ul class="task-list" id="taskList">
+    <li class="task-item" data-i="0"><div class="task-check">✓</div><div class="task-text">Clear kitchen counter</div><span class="task-tag tag-tidy">tidy</span></li>
+    <li class="task-item" data-i="1"><div class="task-check">✓</div><div class="task-text">Toss expired spices</div><span class="task-tag tag-toss">toss</span></li>
+    <li class="task-item" data-i="2"><div class="task-check">✓</div><div class="task-text">Sort mail pile</div><span class="task-tag tag-sort">sort</span></li>
+    <li class="task-item" data-i="3"><div class="task-check">✓</div><div class="task-text">Wipe down shelves</div><span class="task-tag tag-tidy">tidy</span></li>
+    <li class="task-item" data-i="4"><div class="task-check">✓</div><div class="task-text">Bag old magazines</div><span class="task-tag tag-toss">toss</span></li>
+  </ul>
+  <button class="clean-btn" id="cleanBtn">Sweep completed</button>
+  <div class="stats">
+    <div><div class="stat-val" id="statDone">0</div><div class="stat-label">Done</div></div>
+    <div><div class="stat-val" id="statLeft">5</div><div class="stat-label">Left</div></div>
+  </div>
+</div>
+
+<!-- FLOW MAP -->
+<div class="screen" id="screen-flow">
+  <div class="flow-title">App Flow</div>
+  <div class="flow-sub">Tap a screen to preview it</div>
+  <div class="flow-grid">
+    <a class="flow-box" href="#/"><span class="arrow">→</span><strong>Home</strong><span>Your active clean-list with sweep action</span></a>
+    <a class="flow-box" href="#/s/2"><span class="arrow">→</span><strong>Zones</strong><span>Break your space into cleanable areas</span></a>
+    <a class="flow-box" href="#/s/3"><span class="arrow">→</span><strong>History</strong><span>See past sweeps and streaks</span></a>
+    <a class="flow-box" href="#/s/4"><span class="arrow">→</span><strong>Rewards</strong><span>Earn gleam points for consistency</span></a>
+  </div>
+</div>
+
+<!-- PLACEHOLDER SCREENS -->
+<div class="screen" id="screen-s2">
+  <div class="placeholder">
+    <span class="icon">🗂</span>
+    <h2>Zones</h2>
+    <p>Split your home into bite-sized zones — kitchen, desk, closet — and tackle one at a time.</p>
+  </div>
+</div>
+<div class="screen" id="screen-s3">
+  <div class="placeholder">
+    <span class="icon">📊</span>
+    <h2>History</h2>
+    <p>Track every sweep. Watch your streak grow. Know which zones stay clean longest.</p>
+  </div>
+</div>
+<div class="screen" id="screen-s4">
+  <div class="placeholder">
+    <span class="icon">✦</span>
+    <h2>Rewards</h2>
+    <p>Earn gleam points for every completed list — unlock new themes and share your shine.</p>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button data-screen="#/"><span class="nav-icon">◉</span>Home</button>
+  <button data-screen="#/flow"><span class="nav-icon">◫</span>Flow</button>
+  <button data-screen="#/s/2"><span class="nav-icon">▦</span>Zones</button>
+  <button data-screen="#/s/3"><span class="nav-icon">◷</span>History</button>
+  <button data-screen="#/s/4"><span class="nav-icon">✦</span>Rewards</button>
+</nav>
+
+<script>
+  // Routing
+  const routes = {
+    '#/':    'screen-hero',
+    '#/flow':'screen-flow',
+    '#/s/2':'screen-s2',
+    '#/s/3':'screen-s3',
+    '#/s/4':'screen-s4'
+  };
+  function navigate() {
+    const hash = location.hash || '#/';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const id = routes[hash] || routes['#/'];
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.bottom-nav button').forEach(b => {
+      b.classList.toggle('active', b.dataset.screen === hash);
+    });
+  }
+  window.addEventListener('hashchange', navigate);
+  document.querySelectorAll('.bottom-nav button').forEach(b => {
+    b.addEventListener('click', () => { location.hash = b.dataset.screen; });
+  });
+  navigate();
+
+  // Task interaction
+  const items = document.querySelectorAll('.task-item');
+  const cleanBtn = document.getElementById('cleanBtn');
+  let doneCount = 0;
+  function updateStats() {
+    const total = items.length;
+    const done = document.querySelectorAll('.task-item.done').length;
+    doneCount = done;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statLeft').textContent = total - done;
+  }
+  items.forEach(item => {
+    item.addEventListener('click', () => {
+      item.classList.toggle('done');
+      updateStats();
+      cleanBtn.classList.remove('swept');
+      cleanBtn.textContent = 'Sweep completed';
+    });
+  });
+  cleanBtn.addEventListener('click', () => {
+    if (doneCount === 0) return;
+    cleanBtn.classList.add('swept');
+    cleanBtn.textContent = '';
+  });
+</script>
+</body>
+</html>
